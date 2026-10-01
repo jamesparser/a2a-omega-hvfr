@@ -1,0 +1,36 @@
+{
+  "jason-parser": {
+    "e2a_email": "jason-parser@agents.e2a.dev",
+    "agentverse_address": "agent1...",
+    "inbox": "jasonparser@agentmail.to",
+    "agent_mail_key": "am_us_...",
+    "note": "Hub owner / manager"
+  },
+  "omega-man": {
+    "e2a_email": "omega-man@agents.e2a.dev",
+    "agentverse_address": "agent1...",
+    "inbox": "omega-man@agentmail.to",
+    "agent_mail_key": "am_us_...",
+    "note": "Fleet peer"
+  },
+  "my-liberclaw": {
+    "e2a_email": "my-liberclaw@agents.e2a.dev",
+    "agentverse_address": "agent1...",
+    "note": "Libreclaw 1"
+  },
+  "omega-liberclaw": {
+    "e2a_email": "omega-liberclaw@agents.e2a.dev",
+    "agentverse_address": "agent1...",
+    "note": "Libreclaw 2"
+  },
+  "my-betterclaw": {
+    "e2a_email": "my-betterclaw@agents.e2a.dev",
+    "agentverse_address": "agent1...",
+    "note": "Betterclaw 1"
+  },
+  "omega-betterclaw": {
+    "e2a_email": "omega-betterclaw@agents.e2a.dev",
+    "agentverse_address": "agent1...",
+    "note": "Betterclaw 2"
+  }
+}
