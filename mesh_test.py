@@ -24,15 +24,16 @@ import uuid
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-NAMES = [
-    "jason-parser",
-    "omega-man",
-    "my-liberclaw",
-    "omega-liberclaw",
-    "my-betterclaw",
-    "omega-betterclaw",
-]
-SEED_PREFIX = os.environ.get("A2A_SEED_PREFIX", "a2a-omega-e2a-fleet-")
+# YOUR agents. Override without editing the file:
+#   A2A_MESH_NAMES=a,b,c,d,e,f python3 mesh_test.py
+# These are generic placeholders on purpose: this test signs envelopes with
+# SEED_PREFIX + name and sends real traffic to every name in the list, so a
+# default holding someone else's agent names would drive their mailboxes.
+NAMES = [n.strip() for n in os.environ.get(
+    "A2A_MESH_NAMES",
+    "agent-one,agent-two,agent-three,agent-four,agent-five,agent-six",
+).split(",") if n.strip()]
+SEED_PREFIX = os.environ.get("A2A_SEED_PREFIX", "a2a-myfleet-")
 DEADLINE = float(os.environ.get("MESH_DEADLINE", "45"))  # seconds per pair RTT
 E2A_BASE = os.environ.get("E2A_BASE", "https://api.e2a.dev").rstrip("/")
 UA = (
@@ -58,8 +59,14 @@ if not E2A2:
                     E2A2 = line.split("=", 1)[1].strip()
 
 # which e2a key owns which name
-ACCT1 = {"my-liberclaw", "omega-liberclaw", "my-betterclaw"}
-ACCT2 = {"omega-man", "jason-parser", "omega-betterclaw"}
+# Split your names across your two e2a accounts. Defaults assume the first half
+# of NAMES belongs to account 1 and the rest to account 2; override both to be
+# explicit. Each free e2a account holds three agent inboxes.
+_half = max(1, len(NAMES) // 2)
+ACCT1 = set(n.strip() for n in os.environ.get(
+    "A2A_MESH_ACCT1", ",".join(NAMES[:_half])).split(",") if n.strip())
+ACCT2 = set(n.strip() for n in os.environ.get(
+    "A2A_MESH_ACCT2", ",".join(NAMES[_half:])).split(",") if n.strip())
 
 AV_KEY = os.environ.get("AGENTVERSE_API_KEY", "").strip()
 if not AV_KEY:
@@ -287,6 +294,17 @@ def responder_av(stop_evt):
         time.sleep(1.0)
 
 
+def _json_out_path():
+    """--json PATH or MESH_JSON_OUT=PATH; None means don't write an artifact."""
+    argv = sys.argv[1:]
+    for i, a in enumerate(argv):
+        if a == "--json" and i + 1 < len(argv):
+            return argv[i + 1]
+        if a.startswith("--json="):
+            return a.split("=", 1)[1]
+    return os.environ.get("MESH_JSON_OUT") or None
+
+
 def run_pair(transport, src, dst, timeout=DEADLINE):
     nonce = f"{transport}|{src}|{dst}|{time.time():.3f}|{secrets.token_hex(3)}"
     tag = f"{transport}:{src}->{dst}"
@@ -366,6 +384,34 @@ def main():
         print("\n=== ERRORS ===")
         for k, v in list(ERRORS.items())[:30]:
             print(f"  {k}: {v}")
+
+    # Optional machine-readable artifact: `python mesh_test.py --json results/x.json`
+    # or MESH_JSON_OUT=results/x.json. Written even on failure, because a failing
+    # run is the result you most want to keep.
+    json_out = _json_out_path()
+    if json_out:
+        payload = {
+            "test": "a2a-omega-mesh NxN delivery",
+            "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "agents": NAMES,
+            "transports": transports,
+            "pairs_expected": len(pairs) * len(transports),
+            "delivered": ok,
+            "failed": fail,
+            "results": [
+                {"transport": t, "from": s, "to": d, "delivered": True}
+                for (t, s, d, _rtt) in rows
+            ],
+            "errors": {k: v for k, v in list(ERRORS.items())[:60]},
+            "note": ("Round-trip times are captured by the test but omitted from "
+                     "the committed artifact on purpose: this measures delivery "
+                     "over store-and-forward transports, not responsiveness."),
+        }
+        os.makedirs(os.path.dirname(os.path.abspath(json_out)), exist_ok=True)
+        with open(json_out, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2, sort_keys=True)
+        print(f"wrote {json_out}")
+
     return 0 if fail == 0 else 1
 
 
